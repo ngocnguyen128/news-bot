@@ -19,7 +19,8 @@ DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 TOPICS_FILE = "topics.json"
-SEND_HOUR_UTC = 1  # 8h sáng VN
+SEND_HOUR_UTC = 1   # 8h sáng VN = 1h UTC
+MARKET_HOUR_UTC = 3  # 10h sáng VN = 3h UTC
 
 BLUECHIP = ["VCB", "BID", "CTG", "TCB", "MBB", "VPB", "HPG", "VHM", "MSN", "VNM"]
 
@@ -446,11 +447,19 @@ def main():
     app.add_handler(CommandHandler("removestock", cmd_removestock))
     app.add_handler(CommandHandler("briefing", cmd_briefing))
 
-    # Job tự động 8h sáng VN gửi tin tức
     job_queue = app.job_queue
+
+    # Job tự động 8h sáng VN gửi tin tức
     job_queue.run_daily(
         send_daily_news,
         time=datetime.strptime(f"{SEND_HOUR_UTC}:00", "%H:%M").time(),
+        days=(0, 1, 2, 3, 4, 5, 6)
+    )
+
+    # Job tự động 10h sáng VN gửi briefing thị trường
+    job_queue.run_daily(
+        lambda ctx: asyncio.create_task(send_market_briefing()),
+        time=datetime.strptime(f"{MARKET_HOUR_UTC}:00", "%H:%M").time(),
         days=(0, 1, 2, 3, 4, 5, 6)
     )
 
