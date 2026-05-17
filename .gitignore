@@ -1,0 +1,23 @@
+# Secrets - KHÔNG BAO GIỜ commit file này
+.env
+
+# Runtime data
+topics.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+venv/
+.venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp

@@ -1,0 +1,6 @@
+feedparser
+requests
+openai
+python-telegram-bot[job-queue]
+python-dotenv
+vnstock
