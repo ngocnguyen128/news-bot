@@ -130,20 +130,45 @@ def get_stock_data():
 
 # ===================== NEWS =====================
 
-def fetch_all_articles(max_per_feed=10):
+def fetch_all_articles(max_per_feed=10, days_back=1):
+    from email.utils import parsedate_to_datetime
+    import time
+
+    cutoff = datetime.now() - timedelta(days=days_back)
     all_articles = []
+
     for source_name, url in RSS_SOURCES.items():
         try:
             feed = feedparser.parse(url)
             for entry in feed.entries[:max_per_feed]:
+                # Thử lấy ngày đăng
+                pub_date = None
+                if hasattr(entry, "published"):
+                    try:
+                        pub_date = parsedate_to_datetime(entry.published)
+                        # Bỏ timezone để so sánh
+                        pub_date = pub_date.replace(tzinfo=None)
+                    except:
+                        pass
+
+                # Nếu không có ngày thì bỏ qua
+                if pub_date is None:
+                    continue
+
+                # Chỉ lấy bài trong khoảng days_back ngày
+                if pub_date < cutoff:
+                    continue
+
                 all_articles.append({
                     "source": source_name,
                     "title": entry.get("title", ""),
                     "summary": entry.get("summary", "")[:400],
                     "link": entry.get("link", ""),
+                    "published": pub_date.strftime("%d/%m %H:%M")
                 })
         except:
             continue
+
     return all_articles
 
 def filter_articles_by_topic(articles, topic):
