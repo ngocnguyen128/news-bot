@@ -196,7 +196,7 @@ def summarize_topic(topic, articles):
                     "content": (
                         "Bạn là trợ lý tóm tắt tin tức chuyên nghiệp bằng tiếng Việt. "
                         "Trả lời ngắn gọn, súc tích, dễ đọc trên Telegram. "
-                        "Với mỗi điểm tin hãy cho tên báo và thêm hyper link bài gốc ở trong chữ [link] ở cuối dòng đó. "
+                        "Với mỗi điểm tin hãy cho tên báo và thêm hyper link bài gốc ở trong chữ [tên báo] ở cuối dòng đó. Tên báo là tên của báo trong bài viết"
                         "Bài có thể bằng tiếng Anh hoặc tiếng Việt — hãy tóm tắt tất cả bằng tiếng Việt."
                     )
                 },
