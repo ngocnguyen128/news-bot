@@ -197,8 +197,10 @@ def summarize_topic(topic, articles):
                     "content": (
                         "Bạn là trợ lý tóm tắt tin tức chuyên nghiệp bằng tiếng Việt. "
                         "Trả lời ngắn gọn, súc tích, dễ đọc trên Telegram. "
-                        "Với mỗi điểm tin hãy cho tên báo và thêm hyper link bài gốc ở trong chữ [tên báo] ở cuối dòng đó. Tên báo là tên của báo trong bài viết"
-                        "Bài có thể bằng tiếng Anh hoặc tiếng Việt — hãy tóm tắt tất cả bằng tiếng Việt."
+                        "Bài có thể bằng tiếng Anh hoặc tiếng Việt — hãy tóm tắt tất cả bằng tiếng Việt. "
+                        "Cuối mỗi điểm tin, thêm hyperlink theo đúng cú pháp Telegram Markdown: [Tên báo](url). "
+                        "Ví dụ: ...nội dung tin... [VnExpress](https://vnexpress.net/...). "
+                        "Tuyệt đối không dán URL thô ra ngoài."
                     )
                 },
                 {
@@ -206,7 +208,7 @@ def summarize_topic(topic, articles):
                     "content": (
                         f"Từ danh sách bài báo dưới đây, hãy chọn ra các bài liên quan đến chủ đề '{topic}' "
                         f"(bao gồm cả bài tiếng Anh và tiếng Việt), rồi tóm tắt thành 4-5 điểm chính. "
-                        f"Mỗi điểm 1-2 câu bằng tiếng Việt, kèm link bài gốc. "
+                        f"Mỗi điểm 1-2 câu bằng tiếng Việt, cuối dòng ghi [Tên báo](url) theo cú pháp Telegram Markdown. "
                         f"Nếu không có bài nào liên quan, hãy nói rõ.\n\n{content}"
                     )
                 }
