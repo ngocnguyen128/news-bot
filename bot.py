@@ -37,6 +37,10 @@ RSS_SOURCES = {
     "Reuters World":          "https://feeds.reuters.com/Reuters/worldNews",
     "BBC Business":           "http://feeds.bbci.co.uk/news/business/rss.xml",
     "BBC World":              "http://feeds.bbci.co.uk/news/world/rss.xml",
+    "Bloomberg Markets":      "https://feeds.bloomberg.com/markets/news.rss",
+    "Bloomberg Technology":   "https://feeds.bloomberg.com/technology/news.rss",
+    "CNBC Top News":          "https://www.cnbc.com/id/100003114/device/rss/rss.html",
+    "CNBC Finance":           "https://www.cnbc.com/id/10000664/device/rss/rss.html",
 }
 
 # ===================== TOPICS =====================
@@ -171,22 +175,14 @@ def fetch_all_articles(max_per_feed=10, days_back=1):
 
     return all_articles
 
-def filter_articles_by_topic(articles, topic):
-    topic_lower = topic.lower()
-    keywords = topic_lower.split()
-    matched = []
-    for a in articles:
-        text = (a["title"] + " " + a["summary"]).lower()
-        if any(kw in text for kw in keywords):
-            matched.append(a)
-    return matched[:15]
-
 # ===================== DEEPSEEK =====================
 
 def summarize_topic(topic, articles):
     client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url="https://api.deepseek.com")
     if not articles:
         return None
+
+    # Gửi tất cả bài, để AI tự lọc và tóm tắt — xử lý được cả tiếng Anh lẫn tiếng Việt
     content = "\n".join([
         f"[{a['source']}] {a['title']}: {a['summary']} (Link: {a['link']})"
         for a in articles
@@ -200,18 +196,21 @@ def summarize_topic(topic, articles):
                     "content": (
                         "Bạn là trợ lý tóm tắt tin tức chuyên nghiệp bằng tiếng Việt. "
                         "Trả lời ngắn gọn, súc tích, dễ đọc trên Telegram. "
-                        "Với mỗi điểm tin quan trọng, thêm link bài gốc ở cuối dòng đó."
+                        "Với mỗi điểm tin quan trọng, thêm link bài gốc ở cuối dòng đó. "
+                        "Bài có thể bằng tiếng Anh hoặc tiếng Việt — hãy tóm tắt tất cả bằng tiếng Việt."
                     )
                 },
                 {
                     "role": "user",
                     "content": (
-                        f"Tóm tắt các tin tức sau về chủ đề '{topic}' thành 4-5 điểm chính. "
-                        f"Mỗi điểm 1-2 câu, kèm link bài gốc:\n\n{content}"
+                        f"Từ danh sách bài báo dưới đây, hãy chọn ra các bài liên quan đến chủ đề '{topic}' "
+                        f"(bao gồm cả bài tiếng Anh và tiếng Việt), rồi tóm tắt thành 4-5 điểm chính. "
+                        f"Mỗi điểm 1-2 câu bằng tiếng Việt, kèm link bài gốc. "
+                        f"Nếu không có bài nào liên quan, hãy nói rõ.\n\n{content}"
                     )
                 }
             ],
-            max_tokens=600
+            max_tokens=800
         )
         return response.choices[0].message.content
     except Exception as e:
@@ -279,11 +278,7 @@ async def send_daily_news(context: ContextTypes.DEFAULT_TYPE = None):
 
     articles = fetch_all_articles()
     for topic in topics:
-        matched = filter_articles_by_topic(articles, topic)
-        if not matched:
-            send_telegram_message(f"📌 *{topic.upper()}*\n\n_Không tìm thấy tin mới hôm nay._")
-            continue
-        summary = summarize_topic(topic, matched)
+        summary = summarize_topic(topic, articles)
         if summary:
             send_telegram_message(f"📌 *{topic.upper()}*\n\n{summary}")
 
