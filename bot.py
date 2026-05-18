@@ -18,11 +18,35 @@ load_dotenv()
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
+ADMIN_CHAT_ID = os.getenv("ADMIN_CHAT_ID")
 TOPICS_FILE = "topics.json"
 SEND_HOUR_UTC = 1   # 8h sáng VN = 1h UTC
 MARKET_HOUR_UTC = 3  # 10h sáng VN = 3h UTC
 
 BLUECHIP = ["VCB", "BID", "CTG", "TCB", "MBB", "VPB", "HPG", "VHM", "MSN", "VNM"]
+
+# ===================== LOGGING =====================
+
+def log_to_admin(update: Update, command: str):
+    if not ADMIN_CHAT_ID:
+        return
+    user = update.effective_user
+    name = user.full_name or "Unknown"
+    username = f"@{user.username}" if user.username else "no username"
+    chat = update.effective_chat
+    chat_name = chat.title if chat.title else "Private"
+    now = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+    text = (
+        f"📋 *Log lệnh*\n"
+        f"🕐 {now}\n"
+        f"👤 {name} ({username})\n"
+        f"💬 Chat: {chat_name}\n"
+        f"⚡️ Lệnh: `{command}`"
+    )
+    requests.post(
+        f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage",
+        json={"chat_id": ADMIN_CHAT_ID, "text": text, "parse_mode": "Markdown"}
+    )
 
 RSS_SOURCES = {
     "VnExpress Kinh doanh":   "https://vnexpress.net/rss/kinh-doanh.rss",
@@ -331,6 +355,7 @@ Mua: {gold_price['buy']} | Bán: {gold_price['sell']}
 # ===================== TELEGRAM COMMANDS =====================
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    log_to_admin(update, "/start")
     msg = (
         "👋 Xin chào! Tôi là bot tin tức & thị trường của bạn.\n\n"
         "📰 *Lệnh tin tức:*\n"
@@ -351,6 +376,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # --- News commands ---
 async def cmd_addtopic(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    log_to_admin(update, f"/addtopic {' '.join(context.args)}" if context.args else "/addtopic")
     if not context.args:
         await update.message.reply_text("❌ Ví dụ: /addtopic tài chính ngân hàng")
         return
@@ -364,6 +390,7 @@ async def cmd_addtopic(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"✅ Đã thêm chủ đề: *{topic}*", parse_mode="Markdown")
 
 async def cmd_removetopic(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    log_to_admin(update, f"/removetopic {' '.join(context.args)}" if context.args else "/removetopic")
     if not context.args:
         await update.message.reply_text("❌ Ví dụ: /removetopic tài chính ngân hàng")
         return
@@ -377,6 +404,7 @@ async def cmd_removetopic(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"🗑 Đã xóa chủ đề: *{topic}*", parse_mode="Markdown")
 
 async def cmd_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    log_to_admin(update, "/list")
     topics = load_topics()
     if not topics:
         await update.message.reply_text("📋 Chưa có chủ đề nào. Dùng /addtopic để thêm!")
@@ -385,17 +413,20 @@ async def cmd_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(msg, parse_mode="Markdown")
 
 async def cmd_news(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    log_to_admin(update, "/news")
     await update.message.reply_text("⏳ Đang tổng hợp tin tức, chờ mình tí...")
     await send_daily_news()
 
 # --- Stock commands ---
 async def cmd_watchlist(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    log_to_admin(update, "/watchlist")
     symbols = load_watchlist()
     text = "👀 *Watchlist hiện tại:*\n" + "\n".join(f"• {s}" for s in symbols)
     text += "\n\n➕ Thêm: `/addstock VPB`\n➖ Bớt: `/removestock VPB`"
     await update.message.reply_text(text, parse_mode="Markdown")
 
 async def cmd_addstock(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    log_to_admin(update, f"/addstock {' '.join(context.args)}" if context.args else "/addstock")
     if not context.args:
         await update.message.reply_text("❌ Ví dụ: /addstock VPB", parse_mode="Markdown")
         return
@@ -412,6 +443,7 @@ async def cmd_addstock(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def cmd_removestock(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    log_to_admin(update, f"/removestock {' '.join(context.args)}" if context.args else "/removestock")
     if not context.args:
         await update.message.reply_text("❌ Ví dụ: /removestock VPB", parse_mode="Markdown")
         return
@@ -428,6 +460,7 @@ async def cmd_removestock(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def cmd_briefing(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    log_to_admin(update, "/briefing")
     await update.message.reply_text("⏳ Đang lấy dữ liệu thị trường, chờ mình tí...")
     await send_market_briefing()
 
