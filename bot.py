@@ -117,39 +117,22 @@ def get_exchange_rate():
         return {"buy": "N/A", "sell": "N/A"}
 
 def get_gold_price():
-    # Nguồn 1: BTMC API
     try:
-        import urllib3
-        urllib3.disable_warnings()
-        url = "https://api.btmc.vn/api/BTMCAPI/getpricebtmc?key=3kd8ub1llcg9t45bnwOption"
-        r = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"}, verify=False)
-        data = r.json()
-        rows = data.get("DataList", {}).get("Data", [])
-        for item in rows:
-            if item.get("@row") == "1":
-                buy = item.get("@pb", "N/A")
-                sell = item.get("@ps", "N/A")
-                try:
-                    buy = f"{int(float(buy)):,}".replace(",", ".")
-                    sell = f"{int(float(sell)):,}".replace(",", ".")
-                except:
-                    pass
-                return {"buy": f"{buy} VNĐ", "sell": f"{sell} VNĐ"}
-    except:
-        pass
-
-    # Nguồn 2: PNJ API
-    try:
-        url = "https://www.pnj.com.vn/blog/gia-vang/"
-        r = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
         import re
-        buy = re.search(r'Giá mua.*?(\d[\d\.]+)', r.text)
-        sell = re.search(r'Giá bán.*?(\d[\d\.]+)', r.text)
-        if buy and sell:
-            return {"buy": buy.group(1) + " VNĐ", "sell": sell.group(1) + " VNĐ"}
+        url = "https://www.24h.com.vn/gia-vang-hom-nay-c425.html"
+        r = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
+        # Tìm giá SJC: <span>SJC</span>...<strong>161,300</strong>...<strong>163,800</strong>
+        match = re.search(
+            r'SJC</span>.*?<strong>([\d,\.]+)</strong>.*?<strong>([\d,\.]+)</strong>',
+            r.text, re.DOTALL
+        )
+        if match:
+            return {
+                "buy": match.group(1) + " nghìn/lượng",
+                "sell": match.group(2) + " nghìn/lượng"
+            }
     except:
         pass
-
     return {"buy": "N/A", "sell": "N/A"}
 
 def get_stock_data():
