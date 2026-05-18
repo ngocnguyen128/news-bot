@@ -282,38 +282,39 @@ Trả lời tiếng Việt, ngắn gọn, dùng emoji, format Markdown cho Teleg
 
 # ===================== SEND MESSAGES =====================
 
-def send_telegram_message(text):
+def send_telegram_message(text, chat_id=None):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+    target = chat_id or CHAT_ID
     chunks = [text[i:i+4000] for i in range(0, len(text), 4000)]
     for chunk in chunks:
         requests.post(url, json={
-            "chat_id": CHAT_ID,
+            "chat_id": target,
             "text": chunk,
             "parse_mode": "Markdown",
             "disable_web_page_preview": True
         })
 
-async def send_daily_news(context: ContextTypes.DEFAULT_TYPE = None):
+async def send_daily_news(context: ContextTypes.DEFAULT_TYPE = None, chat_id=None):
     """Gửi bản tin tức theo chủ đề"""
     topics = load_topics()
     if not topics:
-        send_telegram_message("⚠️ Bạn chưa có chủ đề nào. Nhắn /addtopic <chủ đề> để thêm.")
+        send_telegram_message("⚠️ Bạn chưa có chủ đề nào. Nhắn /addtopic <chủ đề> để thêm.", chat_id)
         return
 
     now = datetime.now().strftime("%d/%m/%Y")
-    send_telegram_message(f"🗞 *Bản tin buổi sáng - {now}*\n\nĐang tổng hợp tin tức...")
+    send_telegram_message(f"🗞 *Bản tin buổi sáng - {now}*\n\nĐang tổng hợp tin tức...", chat_id)
 
     articles = fetch_all_articles()
     for topic in topics:
         summary = summarize_topic(topic, articles)
         if summary:
-            send_telegram_message(f"📌 *{topic.upper()}*\n\n{summary}")
+            send_telegram_message(f"📌 *{topic.upper()}*\n\n{summary}", chat_id)
 
-    send_telegram_message("✅ *Hết bản tin. Chúc bạn ngày làm việc hiệu quả!*")
+    send_telegram_message("✅ *Hết bản tin. Chúc bạn ngày làm việc hiệu quả!*", chat_id)
 
-async def send_market_briefing():
+async def send_market_briefing(chat_id=None):
     """Gửi briefing thị trường"""
-    send_telegram_message("⏳ Đang lấy dữ liệu thị trường...")
+    send_telegram_message("⏳ Đang lấy dữ liệu thị trường...", chat_id)
     usd_rate = get_exchange_rate()
     gold_price = get_gold_price()
     stock_data = get_stock_data()
@@ -350,7 +351,7 @@ Mua: {gold_price['buy']} | Bán: {gold_price['sell']}
 🤖 *PHÂN TÍCH AI*
 {analysis}"""
 
-    send_telegram_message(message)
+    send_telegram_message(message, chat_id)
 
 # ===================== TELEGRAM COMMANDS =====================
 
@@ -415,7 +416,7 @@ async def cmd_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def cmd_news(update: Update, context: ContextTypes.DEFAULT_TYPE):
     log_to_admin(update, "/news")
     await update.message.reply_text("⏳ Đang tổng hợp tin tức, chờ mình tí...")
-    await send_daily_news()
+    await send_daily_news(chat_id=update.effective_chat.id)
 
 # --- Stock commands ---
 async def cmd_watchlist(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -462,7 +463,7 @@ async def cmd_removestock(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def cmd_briefing(update: Update, context: ContextTypes.DEFAULT_TYPE):
     log_to_admin(update, "/briefing")
     await update.message.reply_text("⏳ Đang lấy dữ liệu thị trường, chờ mình tí...")
-    await send_market_briefing()
+    await send_market_briefing(chat_id=update.effective_chat.id)
 
 # ===================== MAIN =====================
 
