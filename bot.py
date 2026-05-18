@@ -117,15 +117,40 @@ def get_exchange_rate():
         return {"buy": "N/A", "sell": "N/A"}
 
 def get_gold_price():
+    # Nguồn 1: BTMC API
     try:
-        url = "https://sjc.com.vn/GoldPrice/Index/GetGoldPriceList"
-        r = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
+        import urllib3
+        urllib3.disable_warnings()
+        url = "https://api.btmc.vn/api/BTMCAPI/getpricebtmc?key=3kd8ub1llcg9t45bnwOption"
+        r = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"}, verify=False)
         data = r.json()
-        for item in data:
-            if "SJC" in str(item.get("kieu", "")):
-                return {"buy": item.get("mua", "N/A"), "sell": item.get("ban", "N/A")}
+        rows = data.get("DataList", {}).get("Data", [])
+        for item in rows:
+            if item.get("@row") == "1":
+                buy = item.get("@pb", "N/A")
+                sell = item.get("@ps", "N/A")
+                try:
+                    buy = f"{int(float(buy)):,}".replace(",", ".")
+                    sell = f"{int(float(sell)):,}".replace(",", ".")
+                except:
+                    pass
+                return {"buy": f"{buy} VNĐ", "sell": f"{sell} VNĐ"}
     except:
-        return {"buy": "N/A", "sell": "N/A"}
+        pass
+
+    # Nguồn 2: PNJ API
+    try:
+        url = "https://www.pnj.com.vn/blog/gia-vang/"
+        r = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
+        import re
+        buy = re.search(r'Giá mua.*?(\d[\d\.]+)', r.text)
+        sell = re.search(r'Giá bán.*?(\d[\d\.]+)', r.text)
+        if buy and sell:
+            return {"buy": buy.group(1) + " VNĐ", "sell": sell.group(1) + " VNĐ"}
+    except:
+        pass
+
+    return {"buy": "N/A", "sell": "N/A"}
 
 def get_stock_data():
     watchlist = load_watchlist()
@@ -267,8 +292,8 @@ Giá vàng SJC: Mua {gold_price['buy']} | Bán {gold_price['sell']}
 
 Hãy:
 1. Nhận xét ngắn xu hướng thị trường hôm nay (2-3 câu)
-2. Giải thích lý do biến động TOP 3 mã mạnh nhất
-3. Nhận xét watchlist cá nhân
+2. Giải thích lý do biến động TOP 3 mã mạnh nhất — dùng đúng tên mã (VD: VCB, TCB, HPG), không dùng "mã A, mã B"
+3. Nhận xét watchlist cá nhân — dùng đúng tên mã từng cổ phiếu
 4. Một câu lưu ý ngắn
 
 Trả lời tiếng Việt, ngắn gọn, dùng emoji, format Markdown cho Telegram."""
