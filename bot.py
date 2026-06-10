@@ -22,6 +22,16 @@ ADMIN_CHAT_ID = os.getenv("ADMIN_CHAT_ID")
 TOPICS_FILE = "topics.json"
 SEND_HOUR_UTC = 1   # 8h sáng VN = 1h UTC
 MARKET_HOUR_UTC = 3  # 10h sáng VN = 3h UTC
+VOCAB_HOUR_UTC = 0   # 7h sáng VN = 0h UTC
+LISTENING_HOUR_UTC = 5  # 12h trưa VN = 5h UTC
+
+# Kênh YouTube tiếng Anh về finance/data để luyện nghe (RSS theo channel_id)
+YOUTUBE_CHANNELS = {
+    "Bloomberg Television": "UCIALMKvObZNtJ6AmdCLP7Lg",
+    "CNBC":                 "UCvJJ_dzjViJCoLf5uKUTwoA",
+    "The Plain Bagel":      "UCFCEuCsyWP0YkP3CZ3Mr01Q",
+    "Economics Explained":  "UCZ4AMrDcNrfy3X6nsU8-rPg",
+}
 
 BLUECHIP = ["VCB", "BID", "CTG", "TCB", "MBB", "VPB", "HPG", "VHM", "MSN", "VNM"]
 
@@ -361,6 +371,68 @@ Mua: {gold_price['buy']} | Bán: {gold_price['sell']}
 
     send_telegram_message(message, chat_id)
 
+async def send_daily_vocab(context: ContextTypes.DEFAULT_TYPE = None, chat_id=None):
+    """Gửi 10 từ vựng tiếng Anh về data & banking mỗi sáng"""
+    client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url="https://api.deepseek.com")
+    today = datetime.today().strftime("%d/%m/%Y")
+    try:
+        response = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "Bạn là giáo viên tiếng Anh chuyên ngành. "
+                        "Trả lời format Markdown cho Telegram, ngắn gọn dễ đọc."
+                    )
+                },
+                {
+                    "role": "user",
+                    "content": (
+                        f"Hôm nay là {today}. Hãy chọn 10 từ vựng tiếng Anh thuộc lĩnh vực "
+                        f"data analytics và banking/finance (mức intermediate-advanced, "
+                        f"chọn từ đa dạng, tránh các từ quá cơ bản như bank, data, money). "
+                        f"Với mỗi từ ghi theo format:\n"
+                        f"1. *từ* /phiên âm IPA/ (loại từ) — nghĩa tiếng Việt\n"
+                        f"_Ví dụ: câu ví dụ tiếng Anh ngắn_\n"
+                        f"Chia làm 2 nhóm: 📊 DATA (5 từ) và 🏦 BANKING (5 từ)."
+                    )
+                }
+            ],
+            max_tokens=1500
+        )
+        vocab = response.choices[0].message.content
+        send_telegram_message(f"📚 *TỪ VỰNG MỖI NGÀY — {today}*\n\n{vocab}", chat_id)
+    except Exception as e:
+        send_telegram_message(f"⚠️ Lỗi khi tạo từ vựng: {str(e)}", chat_id)
+
+async def send_daily_listening(context: ContextTypes.DEFAULT_TYPE = None, chat_id=None):
+    """Gửi 1 clip tiếng Anh về finance/data mỗi trưa để luyện nghe"""
+    import random
+    channels = list(YOUTUBE_CHANNELS.items())
+    random.shuffle(channels)
+    for name, channel_id in channels:
+        try:
+            feed = feedparser.parse(f"https://www.youtube.com/feeds/videos.xml?channel_id={channel_id}")
+            if not feed.entries:
+                continue
+            video = feed.entries[0]
+            title = video.get("title", "")
+            link = video.get("link", "")
+            if not link:
+                continue
+            send_telegram_message(
+                f"🎧 *LUYỆN NGHE BUỔI TRƯA*\n\n"
+                f"📺 Kênh: {name}\n"
+                f"🎬 [{title}]({link})\n\n"
+                f"_Nghe và note lại 3-5 từ mới nhé!_",
+                chat_id
+            )
+            return
+        except:
+            continue
+    send_telegram_message("⚠️ Hôm nay không lấy được clip, thử lại sau nhé.", chat_id)
+
 # ===================== TELEGRAM COMMANDS =====================
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -377,6 +449,9 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/addstock <mã> — Thêm mã cổ phiếu\n"
         "/removestock <mã> — Xóa mã cổ phiếu\n"
         "/briefing — Xem briefing thị trường ngay\n\n"
+        "📚 *Lệnh học tiếng Anh:*\n"
+        "/vocab — Nhận 10 từ vựng data & banking\n"
+        "/listen — Nhận clip luyện nghe\n\n"
         "💡 *Ví dụ:*\n"
         "/addtopic tài chính ngân hàng\n"
         "/addstock VPB"
@@ -473,6 +548,16 @@ async def cmd_briefing(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("⏳ Đang lấy dữ liệu thị trường, chờ mình tí...")
     await send_market_briefing(chat_id=update.effective_chat.id)
 
+# --- Learning commands ---
+async def cmd_vocab(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    log_to_admin(update, "/vocab")
+    await update.message.reply_text("⏳ Đang soạn từ vựng, chờ mình tí...")
+    await send_daily_vocab(chat_id=update.effective_chat.id)
+
+async def cmd_listen(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    log_to_admin(update, "/listen")
+    await send_daily_listening(chat_id=update.effective_chat.id)
+
 # ===================== MAIN =====================
 
 def main():
@@ -491,6 +576,10 @@ def main():
     app.add_handler(CommandHandler("removestock", cmd_removestock))
     app.add_handler(CommandHandler("briefing", cmd_briefing))
 
+    # Learning handlers
+    app.add_handler(CommandHandler("vocab", cmd_vocab))
+    app.add_handler(CommandHandler("listen", cmd_listen))
+
     job_queue = app.job_queue
 
     # Job tự động 8h sáng VN gửi tin tức
@@ -504,6 +593,20 @@ def main():
     job_queue.run_daily(
         lambda ctx: asyncio.create_task(send_market_briefing()),
         time=datetime.strptime(f"{MARKET_HOUR_UTC}:00", "%H:%M").time(),
+        days=(0, 1, 2, 3, 4, 5, 6)
+    )
+
+    # Job tự động 7h sáng VN gửi từ vựng tiếng Anh
+    job_queue.run_daily(
+        send_daily_vocab,
+        time=datetime.strptime(f"{VOCAB_HOUR_UTC}:00", "%H:%M").time(),
+        days=(0, 1, 2, 3, 4, 5, 6)
+    )
+
+    # Job tự động 12h trưa VN gửi clip luyện nghe
+    job_queue.run_daily(
+        send_daily_listening,
+        time=datetime.strptime(f"{LISTENING_HOUR_UTC}:00", "%H:%M").time(),
         days=(0, 1, 2, 3, 4, 5, 6)
     )
 
